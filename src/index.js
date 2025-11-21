@@ -598,7 +598,9 @@ function processUseCard(session, clientId, command) {
 
   // Find target player by position (for non-AoE cards)
   let targetId = null;
-  if (targetQ !== undefined && targetR !== undefined) {
+  const hasExplicitTarget = targetQ !== undefined && targetR !== undefined;
+
+  if (hasExplicitTarget) {
     const targetPos = { q: targetQ, r: targetR };
     for (const [playerId, pos] of Object.entries(session.state.positions)) {
       // Skip self for damage cards
@@ -608,10 +610,16 @@ function processUseCard(session, clientId, command) {
         break;
       }
     }
+
+    // If explicit target position was given but no valid target found, fail for damage cards
+    if (!targetId && cardData.type === 'damage') {
+      sendTo(clientId, { type: 'error', message: 'No valid target at position' });
+      return false;
+    }
   }
 
-  // If no target found by position, use card target logic
-  if (!targetId) {
+  // Only use fallback target logic if no explicit target position was provided
+  if (!targetId && !hasExplicitTarget) {
     targetId = getTargetByCard(session, clientId, cardData);
   }
 
